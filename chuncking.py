@@ -10,7 +10,16 @@ splitter = RecursiveCharacterTextSplitter(
 def split_text_into_chunks(file_path):
     text = universal_file_loader(file_path)
 
-    chunks = splitter.split_text(text)
+    raw_chunks = splitter.split_text(text)
+
+    chunks = []
+
+    for i, chunk in enumerate(raw_chunks):
+        chunks.append({
+            "text": chunk,
+            "source": file_path,
+            "chunk_index": i,
+        })
 
     return chunks
 

@@ -1,0 +1,30 @@
+Vinayak Mishra
+AMC Engineering College, Bannerghatta Main Road- 560083 | 9142128678 | vk2005917@gmail.com
+GitHub (Vinayak2005917) | LinkedIn (vinayakmishra-cse) | Codewars : 75+ problems solved
+AI & ML: PyTorch, TensorFlow, Scikit-learn, Transformers, Hugging Face, Pandas, NumPy
+Agentic AI & RAG: LangChain, LangGraph, Qdrant, OpenAI API, Ollama, Embeddings, Vector Databases
+Web & Visualization: Django, Flask, FastAPI, Streamlit, WebSockets, REST APIs, Supabase
+AI Research Intern (The Bean Code) - Sept 2025 to Jan 2026: Developed Nuisance-Aware
+Representation Refinement, a lightweight plug-in module improving cross-dataset DFDC AUC from 0.655
+to 0.705 (+7.7%) with only 1.9% additional overhead. Built and evaluated on 3 datasets (FF++, DFDC,
+Celeb-DF) and 5 JPEG compression levels. View Paper
+Development Intern (Shopto) - July 2025 to Oct 2025: Contributed 30+ PRs and engineered an
+Agentic Firebase Retrieval system from scratch, along with PDF-based file generation.
+Python Trainee Intern (BroskiesHub) - Jul 2025 – Aug 2025: Built 5 deployable Python projects and
+ranked in the top 3 performers out of 50 coworkers.
+Ask The Right Questions: Interactive RAG Detective Game GitHub Repo | Live Demo
+Built an interactive detective game that teaches RAG. Implemented Top-K semantic memory retrieval
+from a vector database and a UMAP-based 2D visualization of the memory space. Optimized agentic
+RAG latency by ~57% (5.8s to 2.5s) using parallel speculative retrieval, caching results while the LLM
+processed tool selection.Tech Stack: LangChain, Qdrant, FastAPI, PixiJS
+Andromeda: Generative UI Based Research Agent GitHub Repo | Live Demo
+Built and deployed an AI Agent that generates interactive UIs for learning, with tools like web search,
+asynchronous multi-page content extraction reducing research latency from ~89s to ~12.5s (~86%), and
+image retrieval. Tech Stack: LangChain, LangGraph, FastAPI, WebSockets, SERP API, Vercel, Render
+CODORA (2nd Prize, Digitize 2025, AIT Chikmagalur) GitHub Repo | Live Demo
+Led a 4-member team to develop a real-time collaborative workspace with AI-assisted coding, securing
+2nd place out of 150+ teams at Digitize 2025. Engineered a scalable asynchronous architecture using
+WebSockets for multi-user document editing and integrated a Copilot-style assistant. Tech Stack: Django
+REST, WebSockets, OpenRouter API, Vercel, Render.
+AMC Engineering College — B.E Computer Science Engineering
+Aug 2023 - Aug 2027, Bengaluru

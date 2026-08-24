@@ -1,5 +1,7 @@
 import pymupdf
 from docx import Document
+from pandas import read_csv, read_excel
+import json
 
 
 def load_pdf(path):
@@ -26,6 +28,19 @@ def load_docx(path):
         output += f"{paragraph.text}\n"
     return output
 
+def load_csv(path):
+    df = read_csv(path)
+    return df.to_string()
+
+def load_excel(path):
+    df = read_excel(path)
+    return df.to_string()
+
+def load_json(path):
+    with open(path, 'r') as file:
+        data = json.load(file)
+    return json.dumps(data, indent=4)
+
 def universal_file_loader(path):
     if path.endswith('.pdf'):
         doc = pymupdf.open(path)
@@ -36,5 +51,11 @@ def universal_file_loader(path):
         return load_markdown(path)
     elif path.endswith('.docx'):
         return load_docx(path)
+    elif path.endswith('.csv'):
+        return load_csv(path)
+    elif path.endswith('.xlsx'):
+        return load_excel(path)
+    elif path.endswith('.json'):    
+        return load_json(path)
     else:
         raise ValueError(f"Unsupported file format: {path}")
