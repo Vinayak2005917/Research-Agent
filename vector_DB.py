@@ -51,6 +51,10 @@ def upsert_file(file_path, session_id):
     client.upsert(collection_name=COLLECTION_NAME,points=points)
     return len(points)
 
+
+from langchain.tools import tool
+
+@tool("retrieve_top_k", description="Retrieve top k relevant documents from the vector database.")
 def retrieve_top_k(query, session_id, k=5):
 
     query_vector = embedding_model.encode(query,normalize_embeddings=True).tolist()
