@@ -8,6 +8,7 @@ from vector_DB import retrieve_top_k, upsert_file
 from langchain.tools import tool
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
+from utils import debug_print
 import os
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -29,6 +30,7 @@ class ResearchOutput(BaseModel):
 
 @tool("ask_user",description="Ask the user a question and get their response.")
 async def ask_user(question: str) -> str:
+    debug_print("The research agent is asking the user a question: " + question)
     answer = interrupt({
         "type": "user_question",
         "question": question
@@ -46,6 +48,7 @@ and embedded into a vector database. You job is to collect facts and their souce
 2. Get_relevant_webpages: This tool allows you to retrieve relevant webpages based on a query.
 3. batch_read_pages: This tool allows you to read the content of multiple webpages at once.
 4. ask_user: This tool allows you to ask the user a question and get their response.
+Try to use this atleast once.
 
 ## Priority of tools:
 * Always start with retrieve_top_k tool to check your vector database.
@@ -112,7 +115,7 @@ Your job is to write a final answer to the user's question based ONLY on the res
 
 ## Important:
 * Use only the facts in the research notes. DO NOT MAKE UP ANY INFORMATION OR SOURCES.
-* Cite the sources for each claim.
+* Cite the sources for each claim. format : [text](source)
 * If the information is insufficient, say so honestly.
 * Your final answer MUST be in Markdown format.
 """

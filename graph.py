@@ -35,9 +35,11 @@ async def research_agent_node(state: State):
 
     result = await ask_research_agent(question)
 
-    debug_print(f"Research agent finished with {len(parsed.interactions)} no. of interactions and {len(parsed.research_notes)} no. of research notes")
-
     parsed = result["structured_response"]
+
+    debug_print(f"Research agent finished with {len(parsed.interactions)} no. of interactions and {len(parsed.research_notes)} no. of research notes")
+    debug_print(f"interactions: {parsed.interactions}")
+    debug_print(f"research_notes: {parsed.research_notes}")
 
     return {
         "interactions": parsed.interactions,
@@ -94,6 +96,7 @@ async def run_pipeline(query: str, session_id: str, ask_user) -> str:
         if interrupt_data["type"] == "user_question":
             user_answer = await ask_user(interrupt_data["question"])
             await app.ainvoke(Command(resume=user_answer), config=config)
+            debug_print(f"Resumed graph with user answer: {user_answer}")
 
     final_state = app.get_state(config)
     return final_state.values.get("final_answer", "")

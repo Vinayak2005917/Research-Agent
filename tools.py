@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from utils import debug_print
+from websocket import manager, set_active_connection, reset_active_connection, send_tool_update
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -22,6 +23,7 @@ summary_model = ChatOpenAI(
 
 async def read_webpage(url: str, query: str):
     debug_print(f"Reading webpage {url[:100]} for query: {query}")
+    send_tool_update(f"Reading webpage {url[:100]} for query: {query}")
     response = await asyncio.to_thread(requests.get,f"https://r.jina.ai/{url}",timeout=30)
     summarized_response = await summary_model.ainvoke(f"Summarize the information relevant to this question: Question: {query} Webpage content: {response.text}")
     return summarized_response.content[:6000]
@@ -29,8 +31,10 @@ async def read_webpage(url: str, query: str):
 @tool("Get_relevant_webpages", description="Search the web for relevant webpages.")
 def Get_relevant_webpages(query: str):
     debug_print(f"Searching the web for: {query}")
+    send_tool_update(f"Searching the web for: {query}")
     results = DDGS().text(query, max_results=5)
     debug_print(f"Found & Sent {len(results)} results for query: {query}")
+    send_tool_update(f"Found & Sent {len(results)} results for query: {query}")
     return "\n\n".join(
         f"Title: {item['title']}\nLink: {item['href']}\nDescription: {item['body']}"
         for item in results
@@ -41,6 +45,7 @@ async def batch_read_pages(pages: dict[str, str]):
     pages = dict(list(pages.items())[:5])
 
     debug_print(f"Batch reading {len(pages)} webpages")
+    send_tool_update(f"Batch reading {len(pages)} webpages")
 
     tasks = [read_webpage(url, query) for url, query in pages.items()]
 
@@ -52,8 +57,10 @@ async def batch_read_pages(pages: dict[str, str]):
     for (url, query), result in zip(pages.items(), results):
         if isinstance(result, Exception):
             debug_print(f"Failed reading {url}: {result}")
+            send_tool_update(f"Failed reading {url}: {result}")
             output.append(f"URL: {url}\n ERROR: Could not read this webpage.\n")
         else:
             output.append(f"URL: {url}\n Relevant to: {query}\n\n {result}")
     debug_print(f"Batch reading completed. Returning summaries for {len(output)} webpages.")
+    send_tool_update(f"Batch reading completed. Returning summaries for {len(output)} webpages.")
     return "\n\n--- NEXT WEBPAGE ---\n\n".join(output)

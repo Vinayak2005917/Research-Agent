@@ -88,6 +88,7 @@
     background: var(--agent-bg);
     color: var(--text);
     border-bottom-left-radius: 4px;
+    font-family: "Times New Roman", Times, Georgia, serif;
   }
   .agent.question {
     border-left: 3px solid var(--red);
@@ -99,6 +100,149 @@
     color: var(--text-secondary);
     background: none;
     padding: 4px;
+  }
+
+  /* ---------- Markdown rendering ---------- */
+  .msg.agent.md { white-space: normal; }
+  .md > *:first-child { margin-top: 0; }
+  .md > *:last-child { margin-bottom: 0; }
+  .md p { margin: 0.5em 0; }
+  .md h1, .md h2, .md h3, .md h4 {
+    margin: 0.8em 0 0.4em;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  .md h1 { font-size: 1.35em; }
+  .md h2 { font-size: 1.2em; }
+  .md h3 { font-size: 1.08em; }
+  .md ul, .md ol { margin: 0.5em 0; padding-left: 1.4em; }
+  .md li { margin: 0.25em 0; }
+  .md code {
+    background: rgba(17, 24, 39, 0.07);
+    padding: 0.15em 0.4em;
+    border-radius: 5px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.88em;
+  }
+  .md pre {
+    background: #111827;
+    color: #f9fafb;
+    padding: 12px 14px;
+    border-radius: 10px;
+    overflow-x: auto;
+    margin: 0.6em 0;
+  }
+  .md pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+  .md blockquote {
+    border-left: 3px solid var(--red-border);
+    padding-left: 12px;
+    margin: 0.6em 0;
+    color: var(--text-secondary);
+  }
+  .md table { border-collapse: collapse; margin: 0.6em 0; width: 100%; }
+  .md th, .md td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 0.92em;
+  }
+  .md th { background: var(--red-tint); }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+
+  /* ---------- Citations ---------- */
+  .md a {
+    color: var(--red);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--red-border);
+    transition: border-color 0.15s ease;
+    word-break: break-all;
+  }
+  .md a:hover {
+    border-bottom-style: solid;
+    text-decoration: underline;
+  }
+  /* Inline citation links like [1] or [text](source) get a subtle pill look when short */
+  .md a.cite-num {
+    display: inline-block;
+    background: var(--red-tint);
+    border: 1px solid var(--red-border);
+    border-bottom: 1px solid var(--red-border);
+    border-radius: 999px;
+    padding: 0 7px;
+    font-size: 0.78em;
+    font-weight: 600;
+    vertical-align: super;
+    line-height: 1.5;
+  }
+
+  /* ---------- Sources list ---------- */
+  .sources {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    font-size: 13px;
+  }
+  .sources-title {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .sources ol { padding-left: 18px; margin: 0; }
+  .sources li { margin: 2px 0; }
+  .sources a { color: var(--red); word-break: break-all; }
+
+  /* ---------- Collapsible tool updates ---------- */
+  details.tool-updates {
+    align-self: flex-start;
+    max-width: 75%;
+    margin: -10px 0 0 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  details.tool-updates summary {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--agent-bg);
+    border: 1px solid var(--border);
+    transition: background 0.15s ease;
+  }
+  details.tool-updates summary:hover { background: #e9eaec; }
+  details.tool-updates summary::-webkit-details-marker { display: none; }
+  details.tool-updates summary::before {
+    content: "▸";
+    font-size: 11px;
+    transition: transform 0.15s ease;
+  }
+  details.tool-updates[open] summary::before { transform: rotate(90deg); }
+  details.tool-updates .updates-body {
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .update-entry {
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--border);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .update-entry:last-child { border-bottom: none; }
+  .update-meta {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: ui-monospace, Consolas, monospace;
+    margin-bottom: 2px;
   }
 
   /* ---------- Composer ---------- */
@@ -178,9 +322,116 @@ const statusEl = document.getElementById("status");
 
 let ws = null;
 let threadId = null;
+// Tracks the collapsible tool-updates panel for the current user question
+let currentToolPanel = null;
 
 // Backend URL — change if the server runs elsewhere
 const API_HOST = "http://localhost:8000";
+
+/* ---------- Minimal Markdown renderer (no dependencies) ---------- */
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderMarkdown(md) {
+  let text = escapeHtml(md);
+
+  // Fenced code blocks first
+  const codeBlocks = [];
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    codeBlocks.push(`<pre><code>${code}</code></pre>`);
+    return `\u0000CODE${codeBlocks.length - 1}\u0000`;
+  });
+
+  // Inline code
+  const inlineCodes = [];
+  text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+    inlineCodes.push(`<code>${code}</code>`);
+    return `\u0000IC${inlineCodes.length - 1}\u0000`;
+  });
+
+  // Links: [text](url)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
+    const isCiteNum = /^\[\d+\]$|^\d+$/.test(label.trim());
+    const cls = isCiteNum ? ' class="cite-num"' : "";
+    const title = isCiteNum ? ` title="${url}"` : "";
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer"${cls}${title}>${label}</a>`;
+  });
+  // Bare URLs
+  text = text.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,
+    '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+
+  // Bold / italic / strikethrough
+  text = text.replace(/\*\*\*([^*]+)\*\*\*/g, "<strong><em>$1</em></strong>");
+  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, "$1<em>$2</em>");
+  text = text.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+
+  // Headings
+  text = text.replace(/^#### (.+)$/gm, "<h4>$1</h4>");
+  text = text.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+  text = text.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+  text = text.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+
+  // Blockquote
+  text = text.replace(/^&gt; ?(.+)$/gm, "<blockquote>$1</blockquote>");
+
+  // Horizontal rule
+  text = text.replace(/^---+$/gm, "<hr>");
+
+  // Unordered lists (group consecutive lines)
+  text = text.replace(/(?:^[-*] .+(?:\n|$))+/gm, (block) => {
+    const items = block.trim().split("\n").map(l => `<li>${l.replace(/^[-*] /, "")}</li>`).join("");
+    return `<ul>${items}</ul>\n`;
+  });
+  // Ordered lists
+  text = text.replace(/(?:^\d+\. .+(?:\n|$))+/gm, (block) => {
+    const items = block.trim().split("\n").map(l => `<li>${l.replace(/^\d+\. /, "")}</li>`).join("");
+    return `<ol>${items}</ol>\n`;
+  });
+
+  // Paragraphs: remaining non-empty lines not already block-level
+  text = text.split(/\n{2,}/).map(chunk => {
+    const t = chunk.trim();
+    if (!t) return "";
+    if (/^<(h\d|ul|ol|pre|blockquote|hr|table|div)/.test(t)) return t;
+    return `<p>${t.replace(/\n/g, "<br>")}</p>`;
+  }).join("\n");
+
+  // Restore code placeholders
+  text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, i) => codeBlocks[i]);
+  text = text.replace(/\u0000IC(\d+)\u0000/g, (_, i) => inlineCodes[i]);
+
+  return text;
+}
+
+function renderAgentMessage(text) {
+  const div = document.createElement("div");
+  div.className = "msg agent md";
+  div.innerHTML = renderMarkdown(text);
+
+  // Collect all links into a "Sources" section at the bottom
+  const links = [...div.querySelectorAll("a[href^='http']")];
+  const unique = new Map();
+  links.forEach(a => {
+    const href = a.href;
+    if (!unique.has(href)) unique.set(href, a.textContent.trim() || href);
+  });
+  if (unique.size > 0) {
+    const src = document.createElement("div");
+    src.className = "sources";
+    src.innerHTML =
+      '<div class="sources-title">Sources</div>' +
+      '<ol>' + [...unique.entries()].map(([href, label]) =>
+        `<li><a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a></li>`
+      ).join("") + '</ol>';
+    div.appendChild(src);
+  }
+
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
 
 function addMsg(text, cls) {
   const div = document.createElement("div");
@@ -189,6 +440,37 @@ function addMsg(text, cls) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+function getToolPanel() {
+  if (!currentToolPanel || !currentToolPanel.isConnected) {
+    currentToolPanel = document.createElement("details");
+    currentToolPanel.className = "tool-updates";
+    currentToolPanel.innerHTML =
+      '<summary><span class="updates-count">0</span> agent steps</summary>' +
+      '<div class="updates-body"></div>';
+    chat.appendChild(currentToolPanel);
+  }
+  return currentToolPanel;
+}
+
+function addToolUpdate(msg) {
+  const panel = getToolPanel();
+  const body = panel.querySelector(".updates-body");
+  const count = panel.querySelector(".updates-count");
+
+  const entry = document.createElement("div");
+  entry.className = "update-entry";
+  entry.innerHTML =
+    `<div class="update-meta">${escapeHtml(msg.timestamp)} · ${escapeHtml(msg.function)}</div>` +
+    escapeHtml(msg.content);
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+
+  count.textContent = body.children.length;
+  // Auto-open briefly so the user sees activity, they can collapse it
+  panel.open = true;
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function setBusy(busy) {
@@ -208,12 +490,14 @@ async function connect() {
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === "response") {
-      addMsg(msg.content, "agent");
+      renderAgentMessage(msg.content);
       setBusy(false);
     } else if (msg.type === "agent_question") {
-      addMsg(msg.content, "agent question");
+      renderAgentMessage(msg.content);
       setBusy(false); // let the user answer
       pendingAnswer = true;
+    } else if (msg.type === "tool_update") {
+      addToolUpdate(msg);
     } else if (msg.type === "status") {
       statusEl.textContent = msg.content;
     }
@@ -228,6 +512,7 @@ form.addEventListener("submit", (e) => {
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
   addMsg(text, "user");
   input.value = "";
+  currentToolPanel = null; // new question → fresh collapsible panel
   if (pendingAnswer) {
     // This message is the answer to the agent's question
     ws.send(JSON.stringify({ type: "answer", content: text }));

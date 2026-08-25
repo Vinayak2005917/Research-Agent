@@ -5,6 +5,7 @@ from chuncking import split_text_into_chunks
 from uuid import uuid4
 from utils import debug_print
 from langchain.tools import tool
+from websocket import send_tool_update
 
 
 # Define constants
@@ -70,6 +71,7 @@ def close_client():
 def retrieve_top_k(query, session_id, k=5):
 
     debug_print(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
+    send_tool_update(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
     query_vector = embedding_model.encode(query,normalize_embeddings=True).tolist()
 
     results = client.query_points(
