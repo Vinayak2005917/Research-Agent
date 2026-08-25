@@ -11,48 +11,60 @@ load_dotenv()
 MODEL = os.getenv("MODEL")
 
 
-
 if MODEL == "local":
     from sentence_transformers import SentenceTransformer
-    # Define constants
+
     MODEL_PATH = "./models/bge-small-en-v1.5"
     embedding_model = SentenceTransformer(MODEL_PATH)
 
     def embedd(texts, **kwargs):
-        """Embed texts using the local sentence-transformers model."""
         return embedding_model.encode(texts, **kwargs)
 
+    VECTOR_SIZE = embedding_model.get_sentence_embedding_dimension()
+
 elif MODEL == "remote":
-    # open ai api call to get embedding model
     from openai import OpenAI
+    import numpy as np
+
     _openai_client = OpenAI()
-    EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    EMBEDDING_MODEL_NAME = os.getenv(
+        "EMBEDDING_MODEL",
+        "text-embedding-3-small"
+    )
 
     def embedd(texts, **kwargs):
-        """Embed texts using the OpenAI embeddings API."""
         response = _openai_client.embeddings.create(
             model=EMBEDDING_MODEL_NAME,
             input=texts,
         )
-        import numpy as np
-        vectors = np.array([item.embedding for item in response.data], dtype=np.float32)
+
+        vectors = np.array(
+            [item.embedding for item in response.data],
+            dtype=np.float32
+        )
+
         if kwargs.get("normalize_embeddings"):
             norms = np.linalg.norm(vectors, axis=1, keepdims=True)
             norms[norms == 0] = 1.0
             vectors = vectors / norms
+
         return vectors
 
+    # Get the dimension from the remote embedding model
+    VECTOR_SIZE = len(
+        embedd("dimension probe", normalize_embeddings=False)[0]
+    )
+
 else:
-    raise ValueError(f"Unknown MODEL value: '{MODEL}'. Set MODEL to 'local' or 'remote' in .env")
+    raise ValueError(
+        f"Unknown MODEL value: '{MODEL}'. "
+        "Set MODEL to 'local' or 'remote' in .env"
+    )
 
 QDRANT_PATH = "./data/qdrant"
 COLLECTION_NAME = "research_documents"
+
 client = QdrantClient(path=QDRANT_PATH)
-VECTOR_SIZE = (
-    embedding_model.get_sentence_embedding_dimension()
-    if hasattr(embedding_model, "get_sentence_embedding_dimension")
-    else len(embedd("dimension probe", normalize_embeddings=False)[0])
-)
 
 
 
