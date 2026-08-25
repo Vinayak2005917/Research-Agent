@@ -6,7 +6,7 @@ An evidence-grounded research assistant built by **Vinayak Mishra**. The applica
 
 - **Live application:** [research-agent-flax.vercel.app](https://research-agent-flax.vercel.app/)
 - **Backend health check:** [research-agent-ez0j.onrender.com/health](https://research-agent-ez0j.onrender.com/health)
-- **Video demo:** to be added
+- **Video demo:** [YouTube Video](https://youtu.be/jYEuC32C-z4)
 
 ## What the application does
 
