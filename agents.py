@@ -150,3 +150,72 @@ async def run_prep_agent(state: dict) -> str:
     return result["structured_response"].final_answer
 
 
+class FactCheckOutput(BaseModel):
+    verified_answer: str = Field(description="The corrected/verified final answer in Markdown.")
+    corrections: list[dict] = Field(default_factory=list, description="List of {claim, verdict, explanation, sources} for claims that were wrong or unsupported.")
+
+
+fact_checker_system_prompt = """
+You are a fact-checking agent. You will be given:
+* The user's original question
+* Interactions with the user
+* Research notes (facts with sources)
+* A draft final answer produced by another agent
+
+Your job is to verify every claim in the draft final answer against the research notes,
+and if needed, use your tools to gather additional evidence.
+
+## Tools:
+1. retrieve_top_k: Retrieve top k relevant chunks from the vector database based on a query.
+2. Get_relevant_webpages: Retrieve relevant webpages based on a query.
+3. batch_read_pages: Read the content of multiple webpages at once.
+
+## Instructions:
+* First check each claim against the research notes provided.
+* If a claim is not covered by the research notes, use retrieve_top_k (try short queries, k between 3 to 7).
+* Only use Get_relevant_webpages and batch_read_pages as a fallback if the vector DB has nothing relevant.
+* Try session id : "public" as a fallback if the current session id does not return any results.
+* Mark each claim as verified, corrected, or unsupported.
+* Rewrite the final answer keeping only verified/corrected claims, removing anything unsupported.
+* DO NOT MAKE UP ANY INFORMATION OR SOURCES.
+* Cite sources for each claim. format : [text](source)
+* Your output MUST be in Markdown format.
+"""
+
+
+fact_check_agent = create_agent(
+    model=Smart_model,
+    tools=[Get_relevant_webpages, batch_read_pages, retrieve_top_k],
+    system_prompt=fact_checker_system_prompt,
+    response_format=FactCheckOutput
+)
+
+
+async def run_fact_check_agent(state: dict) -> dict:
+    context = f"""
+        User question:
+        {state.get("user_question", "")}
+
+        Interactions with the user:
+        {state.get("interactions", [])}
+
+        Research notes (facts and their sources):
+        {state.get("research_notes", [])}
+
+        Draft final answer to fact-check:
+        {state.get("final_answer", "")}
+    """
+
+    result = await fact_check_agent.ainvoke({
+        "messages": [
+            {"role": "user", "content": context}
+        ]
+    })
+
+    parsed = result["structured_response"]
+    return {
+        "final_answer": parsed.verified_answer,
+        "evaluation": {"corrections": parsed.corrections},
+    }
+
+

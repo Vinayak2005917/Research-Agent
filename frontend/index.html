@@ -488,8 +488,13 @@ let threadId = null;
 // Tracks the collapsible tool-updates panel for the current user question
 let currentToolPanel = null;
 
-// Backend URL — change if the server runs elsewhere
-const API_HOST = "http://localhost:8000";
+// Backend URL — auto-detects environment:
+// - Frontend deployed (e.g. Vercel) -> primary hosted backend
+// - Served locally (localhost / 127.0.0.1) -> local backend on port 8000
+const PRIMARY_BACKEND = "https://research-agent-ez0j.onrender.com";
+const LOCAL_BACKEND = "http://localhost:8000";
+const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const API_HOST = isLocal ? LOCAL_BACKEND : PRIMARY_BACKEND;
 
 /* ---------- Minimal Markdown renderer (no dependencies) ---------- */
 function escapeHtml(s) {

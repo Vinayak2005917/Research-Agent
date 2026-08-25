@@ -16,7 +16,10 @@ app = FastAPI(title="Research Agent Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=[
+        "*",  # local dev (frontend on :5500)
+        "https://research-agent-flax.vercel.app",  # primary hosted frontend
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

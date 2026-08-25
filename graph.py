@@ -1,5 +1,5 @@
 from typing import TypedDict
-from agents import ask_research_agent, run_prep_agent
+from agents import ask_research_agent, run_prep_agent, run_fact_check_agent
 from langgraph.graph import StateGraph, START, END
 from utils import debug_print
 from langgraph.types import interrupt, Command
@@ -57,14 +57,26 @@ async def prep_agent_node(state: State):
     return {"final_answer": final_answer}
 
 
+async def fact_check_node(state: State):
+    debug_print(f"Fact-check agent started for session id {state['session_id']}")
+
+    result = await run_fact_check_agent(state)
+
+    debug_print(f"Fact-check agent finished with {len(result['evaluation']['corrections'])} corrections")
+
+    return result
+
+
 graph = StateGraph(State)
 
 graph.add_node("agent", research_agent_node)
 graph.add_node("prep", prep_agent_node)
+graph.add_node("fact_check", fact_check_node)
 
 graph.add_edge(START, "agent")
 graph.add_edge("agent", "prep")
-graph.add_edge("prep", END)
+graph.add_edge("prep", "fact_check")
+graph.add_edge("fact_check", END)
 
 checkpointer = InMemorySaver()
 

@@ -6,6 +6,8 @@
 
 ### Live Link
 
+https://research-agent-flax.vercel.app/
+
 ### Video Demo
 
 ## Installation
