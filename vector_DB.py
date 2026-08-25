@@ -1,8 +1,9 @@
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance,VectorParams, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from chuncking import split_text_into_chunks
 from uuid import uuid4
+from utils import debug_print
 
 
 # Define constants
@@ -30,7 +31,7 @@ def upsert_file(file_path, session_id):
     texts = [chunk["text"] for chunk in chunks]
 
     # Generate embeddings
-    vectors = embedding_model.encode(texts,normalize_embeddings=True,)
+    vectors = embedding_model.encode(texts, normalize_embeddings=True)
 
     points = []
 
@@ -48,6 +49,15 @@ def upsert_file(file_path, session_id):
             )
         )
 
+
+def close_client():
+    """Properly close the Qdrant client connection to prevent shutdown errors."""
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            pass  # Ignore errors during shutdown
+
     client.upsert(collection_name=COLLECTION_NAME,points=points)
     return len(points)
 
@@ -57,6 +67,7 @@ from langchain.tools import tool
 @tool("retrieve_top_k", description="Retrieve top k relevant documents from the vector database.")
 def retrieve_top_k(query, session_id, k=5):
 
+    debug_print(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
     query_vector = embedding_model.encode(query,normalize_embeddings=True).tolist()
 
     results = client.query_points(
@@ -73,7 +84,6 @@ def retrieve_top_k(query, session_id, k=5):
         limit=k,
         with_payload=True,
     )
-
     return results.points
 
 if __name__ == "__main__":
@@ -97,3 +107,6 @@ if __name__ == "__main__":
         print("="*25)
 
     client.close()
+    
+import atexit
+atexit.register(close_client)

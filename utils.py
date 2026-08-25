@@ -9,7 +9,7 @@ if not debug_type:
     raise RuntimeError("DEBUG_TYPE is not set")
 
 #Empty the file logs.txt
-with open("debug_log.txt", "w") as f:
+with open("logs.txt", "w") as f:
     f.write("")
 
 def debug_print(contents):

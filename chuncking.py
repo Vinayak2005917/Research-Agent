@@ -3,8 +3,8 @@ from file_loaders import universal_file_loader
 
 
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=100,
-    chunk_overlap=20,
+    chunk_size=500,
+    chunk_overlap=100,
 )
 
 def split_text_into_chunks(file_path):
