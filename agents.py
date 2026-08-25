@@ -4,7 +4,7 @@ from openai import OpenAI
 from openai import AsyncOpenAI
 from tools import Get_relevant_webpages, batch_read_pages
 from dotenv import load_dotenv
-from vector_DB import retrieve_top_k
+from vector_DB import retrieve_top_k, upsert_file
 from langchain.tools import tool
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
@@ -52,6 +52,7 @@ and embedded into a vector database. You job is to collect facts and their souce
 * Recommendation : Try multiple queries with a single word or two, with a k between 3 to 7.
 * Only use Get_relevant_webpages and batch_read_pages as a fallback.
 * Use the ask_user tool only when you are stuck and need clarification from the user (eg. If to use the web tools or not.)
+* try session id : "public" as a fallback if the current session id does not return any results.
 
 ## Important:
 * DO NOT MAKE UP ANY INFORMATION OR SOURCES. If you cannot find the answer, say "I don't know".
@@ -81,7 +82,7 @@ Schema:
 
 research_agent = create_agent(
     model=Smart_model,
-    tools=[Get_relevant_webpages, batch_read_pages, retrieve_top_k, ask_user],
+    tools=[Get_relevant_webpages, batch_read_pages, retrieve_top_k, ask_user, upsert_file],
     system_prompt=main_agent_system_prompt,
     response_format=ResearchOutput
 )
@@ -144,3 +145,5 @@ async def run_prep_agent(state: dict) -> str:
     })
 
     return result["structured_response"].final_answer
+
+

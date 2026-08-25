@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Agent</title>
+<style>
+  :root {
+    --red: #b91c1c;
+    --red-hover: #991b1b;
+    --red-tint: #fef2f2;
+    --red-border: #fecaca;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --agent-bg: #f3f4f6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Status (bottom) ---------- */
+  #status {
+    position: fixed;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    pointer-events: none;
+  }
+
+  /* ---------- Chat area ---------- */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* Scrollbar */
+  #chat::-webkit-scrollbar { width: 10px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 8px;
+    border: 3px solid var(--bg);
+  }
+  #chat::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+  /* ---------- Messages ---------- */
+  .msg {
+    max-width: 75%;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 15px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .user {
+    align-self: flex-end;
+    background: var(--red-tint);
+    border: 1px solid var(--red-border);
+    color: var(--text);
+    border-bottom-right-radius: 4px;
+  }
+  .agent {
+    align-self: flex-start;
+    background: var(--agent-bg);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .agent.question {
+    border-left: 3px solid var(--red);
+    background: var(--red-tint);
+  }
+  .system {
+    align-self: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: none;
+    padding: 4px;
+  }
+
+  /* ---------- Composer ---------- */
+  form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 40px 32px;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  input { max-width: 780px; }
+  input {
+    flex: 1;
+    padding: 13px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input::placeholder { color: #9ca3af; }
+  input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.08);
+  }
+  button {
+    padding: 13px 26px;
+    border-radius: 12px;
+    border: none;
+    background: var(--red);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+  button:hover:not(:disabled) { background: var(--red-hover); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.25);
+  }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 640px) {
+    #chat { padding: 20px; gap: 14px; }
+    .msg { max-width: 88%; font-size: 14px; }
+    form { padding: 12px 20px 18px; }
+    button { padding: 13px 18px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 style="display:none">Research Agent</h1>
+  <span id="status">connecting...</span>
+</header>
+<div id="chat"></div>
+<form id="form">
+  <input id="input" autocomplete="off" placeholder="Ask a research question...">
+  <button id="send">Send</button>
+</form>
+
+<script>
+const chat = document.getElementById("chat");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const statusEl = document.getElementById("status");
+
+let ws = null;
+let threadId = null;
+
+// Backend URL — change if the server runs elsewhere
+const API_HOST = "http://localhost:8000";
+
+function addMsg(text, cls) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function setBusy(busy) {
+  sendBtn.disabled = busy;
+  input.disabled = busy;
+}
+
+async function connect() {
+  const res = await fetch(`${API_HOST}/generate_thread_id`);
+  threadId = (await res.json()).thread_id;
+
+  const proto = API_HOST.startsWith("https") ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${API_HOST.replace(/^https?:\/\//, "")}/ws/${threadId}`);
+
+  ws.onopen = () => { statusEl.textContent = "connected"; };
+  ws.onclose = () => { statusEl.textContent = "disconnected"; };
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === "response") {
+      addMsg(msg.content, "agent");
+      setBusy(false);
+    } else if (msg.type === "agent_question") {
+      addMsg(msg.content, "agent question");
+      setBusy(false); // let the user answer
+      pendingAnswer = true;
+    } else if (msg.type === "status") {
+      statusEl.textContent = msg.content;
+    }
+  };
+}
+
+let pendingAnswer = false;
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  addMsg(text, "user");
+  input.value = "";
+  if (pendingAnswer) {
+    // This message is the answer to the agent's question
+    ws.send(JSON.stringify({ type: "answer", content: text }));
+    pendingAnswer = false;
+  } else {
+    ws.send(JSON.stringify({ type: "message", content: text }));
+  }
+  setBusy(true);
+  statusEl.textContent = "thinking...";
+});
+
+connect();
+</script>
+</body>
+</html>

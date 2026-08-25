@@ -4,6 +4,7 @@ from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, Fi
 from chuncking import split_text_into_chunks
 from uuid import uuid4
 from utils import debug_print
+from langchain.tools import tool
 
 
 # Define constants
@@ -26,6 +27,8 @@ if not client.collection_exists(COLLECTION_NAME):
         ),
     )
 
+
+@tool("upsert_file", description="Upsert a file into the vector database.")
 def upsert_file(file_path, session_id):
     chunks = split_text_into_chunks(file_path)
     texts = [chunk["text"] for chunk in chunks]
@@ -50,6 +53,10 @@ def upsert_file(file_path, session_id):
         )
 
 
+    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    return len(points)
+
+
 def close_client():
     """Properly close the Qdrant client connection to prevent shutdown errors."""
     if client is not None:
@@ -58,11 +65,6 @@ def close_client():
         except Exception:
             pass  # Ignore errors during shutdown
 
-    client.upsert(collection_name=COLLECTION_NAME,points=points)
-    return len(points)
-
-
-from langchain.tools import tool
 
 @tool("retrieve_top_k", description="Retrieve top k relevant documents from the vector database.")
 def retrieve_top_k(query, session_id, k=5):
@@ -88,7 +90,7 @@ def retrieve_top_k(query, session_id, k=5):
 
 if __name__ == "__main__":
     file_path = "Files\Vinayak Mishra Resume.pdf"
-    session_id = "session_1"
+    session_id = "public"
 
 
     num_points = upsert_file(file_path, session_id)
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     for i, point in enumerate(results):
         print(f"Result {i + 1}:")
         print(f"Score: {point.score}")
-        print(f"Text: {point.payload['text']}")
+        print(f"Text: {point.payload['text'][:15]}")
         print(f"Source: {point.payload['source']}")
         print(f"Chunk Index: {point.payload['chunk_index']}")
         print("="*25)

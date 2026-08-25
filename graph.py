@@ -28,14 +28,14 @@ class State(TypedDict):
 
 
 
-async def agent_node(state: State):
-    debug_print("Agent started")
+async def research_agent_node(state: State):
+    debug_print(f"Research agent started with session id {state['session_id']} and question: {state['user_question']}")
 
     question = state["user_question"]
 
     result = await ask_research_agent(question)
 
-    debug_print("Agent finished")
+    debug_print(f"Research agent finished with {len(parsed.interactions)} no. of interactions and {len(parsed.research_notes)} no. of research notes")
 
     parsed = result["structured_response"]
 
@@ -45,20 +45,20 @@ async def agent_node(state: State):
     }
 
 
-async def prep_node(state: State):
-    debug_print("Prep agent started")
+async def prep_agent_node(state: State):
+    debug_print(f"Prep agent started with session id {state['session_id']} and question: {state['user_question']}")
 
     final_answer = await run_prep_agent(state)
 
-    debug_print("Prep agent finished")
+    debug_print(f"Prep agent finished with final answer: {len(final_answer)} characters")
 
     return {"final_answer": final_answer}
 
 
 graph = StateGraph(State)
 
-graph.add_node("agent", agent_node)
-graph.add_node("prep", prep_node)
+graph.add_node("agent", research_agent_node)
+graph.add_node("prep", prep_agent_node)
 
 graph.add_edge(START, "agent")
 graph.add_edge("agent", "prep")
@@ -70,21 +70,21 @@ app = graph.compile(checkpointer=checkpointer)
 
 debug_print("Graph compiled successfully.")
 
-async def Pipeline(query):
-    config = {"configurable": {"thread_id": "session_1"}}
+async def run_pipeline(query: str, session_id: str, ask_user) -> str:
+    config = {"configurable": {"thread_id": session_id}}
 
     initial_state = {
-        "session_id": "session_1",
+        "session_id": session_id,
         "user_question": query,
         "interactions": [],
         "research_notes": [],
         "final_answer": "",
-        "evaluation": None
+        "evaluation": None,
     }
 
-    result = await app.ainvoke(initial_state,config=config)
+    await app.ainvoke(initial_state, config=config)
 
-    # Check whether the graph is paused at an interrupt
+    # Resume the graph whenever it is paused at an interrupt
     while True:
         state = app.get_state(config)
         if not state.interrupts:
@@ -92,22 +92,22 @@ async def Pipeline(query):
         interrupt_data = state.interrupts[0].value
 
         if interrupt_data["type"] == "user_question":
+            user_answer = await ask_user(interrupt_data["question"])
+            await app.ainvoke(Command(resume=user_answer), config=config)
 
-            question = interrupt_data["question"]
-
-            print("\nAgent:")
-            print(question)
-
-            user_answer = input("\nYou: ")
-
-            result = await app.ainvoke(Command(resume=user_answer),config=config)
-
-    pprint(result)
-
-    print("\n\n\n\n"+"="*20+"Extra warning to be dealt with later"+"="*20)
+    final_state = app.get_state(config)
+    return final_state.values.get("final_answer", "")
 
 
 if __name__ == "__main__":
     import asyncio
+
+    async def cli_ask(question: str) -> str:
+        print("\nAgent:")
+        print(question)
+        return input("\nYou: ")
+
     query = "What internships has vinayak done?"
-    asyncio.run(Pipeline(query))
+    answer = asyncio.run(run_pipeline(query, "session_1", cli_ask))
+    print("\nFinal answer:\n")
+    print(answer)

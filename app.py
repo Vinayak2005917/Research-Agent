@@ -2,11 +2,12 @@ import uuid
 
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
-from agents import ask_agent
+from graph import run_pipeline
 from websocket import manager, reset_active_connection, set_active_connection
 
-app = FastAPI(title="Andromeda Backend")
+app = FastAPI(title="Research Agent Backend")
 
 
 app.add_middleware(
@@ -17,23 +18,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def index():
+    return FileResponse("frontend/index.html")
+
+
 #websocket to call the agent and get the response
 @app.websocket("/ws/{thread_id}")
 async def websocket_endpoint(websocket: WebSocket, thread_id: str):
     await manager.connect(websocket)
     connection_token = set_active_connection(websocket)
+
+    async def ask_user(question: str) -> str:
+        # Send the agent's question to the frontend and wait for the reply
+        await manager.send(websocket, {"type": "agent_question", "content": question})
+        reply = await websocket.receive_json()
+        return reply.get("content", "")
+
     try:
         while True:
             message = await websocket.receive_json()
             if message.get("type") != "message":
                 continue
-            response = await ask_agent(
-                thread_id,
-                message.get("content", ""),
-                message.get("model_name", "deepseek/deepseek-v4-flash"),
-                message.get("system_prompt"),
-            )
-            await manager.send(websocket, {"type": "response", "content": response})
+
+            query = message.get("content", "")
+            await manager.send(websocket, {"type": "status", "content": "Researching..."})
+
+            answer = await run_pipeline(query, thread_id, ask_user)
+
+            await manager.send(websocket, {"type": "response", "content": answer})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         reset_active_connection(connection_token)
