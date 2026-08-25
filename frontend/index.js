@@ -22,7 +22,7 @@ let selectedFiles = [];
 
 function refreshFileList() {
   fileList.innerHTML = selectedFiles.map(f => `<div>📄 ${escapeHtml(f.name)}</div>`).join("");
-  startBtn.disabled = !usernameInput.value.trim() || selectedFiles.length === 0;
+  startBtn.disabled = !usernameInput.value.trim();
 }
 
 usernameInput.addEventListener("input", refreshFileList);
@@ -44,7 +44,7 @@ fileDrop.addEventListener("drop", e => {
 
 startBtn.addEventListener("click", async () => {
   const username = usernameInput.value.trim();
-  if (!username || selectedFiles.length === 0) return;
+  if (!username) return;
 
   startBtn.disabled = true;
   usernameInput.disabled = true;
