@@ -1,10 +1,14 @@
+import os
+import re
+import json
 import uuid
 
-from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from graph import run_pipeline
+from vector_DB import upsert_file_func
 from websocket import manager, reset_active_connection, set_active_connection
 
 app = FastAPI(title="Research Agent Backend")
@@ -56,6 +60,54 @@ def generate_UUID_thread_id(response: Response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     return {"thread_id": str(uuid.uuid4())}
+
+
+SUPPORTED_EXTS = (".pdf", ".txt", ".md", ".docx", ".csv", ".xlsx", ".json")
+UPLOAD_ROOT = "./uploads"
+
+
+def _safe_name(name: str) -> str:
+    """Sanitize a username/filename so it's safe to use as a folder name / session id."""
+    name = os.path.basename(name)
+    name = re.sub(r"[^A-Za-z0-9_\-]", "_", name).strip("_")
+    return name or "user"
+
+
+@app.post("/setup")
+async def setup(username: str = Form(...), files: list[UploadFile] = File(default=[])):
+    async def stream():
+        user = _safe_name(username)
+        user_dir = os.path.join(UPLOAD_ROOT, user)
+        os.makedirs(user_dir, exist_ok=True)
+
+        saved_paths = []
+        for f in files:
+            fname = _safe_name(f.filename or "")
+            if not fname.lower().endswith(SUPPORTED_EXTS):
+                yield json.dumps({"stage": "save", "file": f.filename,
+                                  "message": f"skipped unsupported file type"}) + "\n"
+                continue
+            path = os.path.join(user_dir, fname)
+            with open(path, "wb") as out:
+                out.write(await f.read())
+            saved_paths.append((f.filename, path))
+
+        total = len(saved_paths)
+        yield json.dumps({"stage": "index", "current": 0, "total": total,
+                          "message": f"{total} file(s) saved, starting indexing..."}) + "\n"
+
+        for i, (orig, path) in enumerate(saved_paths, start=1):
+            try:
+                count = upsert_file_func(path, user)  # username doubles as session_id
+                msg = f"Indexed {orig} ({count} chunks)"
+            except Exception as e:
+                msg = f"Failed to index {orig}: {e}"
+            yield json.dumps({"stage": "index", "current": i, "total": total,
+                              "file": orig, "message": msg}) + "\n"
+
+        yield json.dumps({"stage": "done", "session_id": user}) + "\n"
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson")
 
 
 @app.get("/health")

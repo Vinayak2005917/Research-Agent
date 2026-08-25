@@ -329,6 +329,102 @@
     border-color: var(--red);
   }
 
+  /* ---------- Onboarding / setup screen ---------- */
+  #setup {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #setup.hidden { display: none; }
+  .setup-card {
+    width: min(480px, 92vw);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 36px;
+    box-shadow: 0 10px 40px rgba(17, 24, 39, 0.08);
+    text-align: center;
+  }
+  .setup-card h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .setup-card p.sub {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .setup-card label {
+    display: block;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin: 16px 0 6px;
+  }
+  .setup-card input[type="text"] {
+    width: 100%;
+    flex: unset;
+    max-width: none;
+  }
+  .file-drop {
+    margin-top: 8px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 22px 14px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .file-drop:hover, .file-drop.dragover {
+    border-color: var(--red);
+    background: var(--red-tint);
+    color: var(--red);
+  }
+  #fileList {
+    text-align: left;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  #fileList div { padding: 2px 0; word-break: break-all; }
+  #startBtn { width: 100%; margin-top: 24px; }
+
+  /* ---------- Progress bar ---------- */
+  #progressWrap { display: none; margin-top: 22px; text-align: left; }
+  #progressWrap.active { display: block; }
+  #progressLabel {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .progress-track {
+    height: 10px;
+    background: var(--agent-bg);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  #progressBar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--red), #ef4444);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
   /* ---------- Responsive ---------- */
   @media (max-width: 640px) {
     #chat { padding: 20px; gap: 14px; }
@@ -339,6 +435,32 @@
 </style>
 </head>
 <body>
+<!-- ---------- Onboarding screen ---------- -->
+<div id="setup">
+  <div class="setup-card">
+    <h2>Welcome to Research Agent</h2>
+    <p class="sub">Enter your name and upload your research documents to get started.</p>
+
+    <label for="username">Your name (used as your session id)</label>
+    <input type="text" id="username" autocomplete="off" placeholder="e.g. alice">
+
+    <label>Documents</label>
+    <div id="fileDrop" class="file-drop">Click or drag &amp; drop files here<br>
+      <small>(pdf, txt, md, docx, csv, xlsx, json)</small>
+    </div>
+    <input type="file" id="fileInput" multiple hidden
+           accept=".pdf,.txt,.md,.docx,.csv,.xlsx,.json">
+    <div id="fileList"></div>
+
+    <button id="startBtn" disabled>Start Session</button>
+
+    <div id="progressWrap">
+      <div id="progressLabel"></div>
+      <div class="progress-track"><div id="progressBar"></div></div>
+    </div>
+  </div>
+</div>
+
 <header>
   <h1 style="display:none">Research Agent</h1>
   <span id="status">connecting...</span>
@@ -519,9 +641,10 @@ function setBusy(busy) {
   input.disabled = busy;
 }
 
-async function connect() {
+async function connect(threadId) {
   const res = await fetch(`${API_HOST}/generate_thread_id`);
-  threadId = (await res.json()).thread_id;
+  // Use the username (session id) if provided, otherwise fall back to a random id
+  threadId = threadId || ((await res.json()).thread_id);
 
   const proto = API_HOST.startsWith("https") ? "wss" : "ws";
   ws = new WebSocket(`${proto}://${API_HOST.replace(/^https?:\/\//, "")}/ws/${threadId}`);
@@ -578,7 +701,88 @@ document.querySelectorAll(".example").forEach(btn => {
   });
 });
 
-connect();
+/* ---------- Onboarding / setup flow ---------- */
+const setupEl = document.getElementById("setup");
+const usernameInput = document.getElementById("username");
+const fileInput = document.getElementById("fileInput");
+const fileDrop = document.getElementById("fileDrop");
+const fileList = document.getElementById("fileList");
+const startBtn = document.getElementById("startBtn");
+const progressWrap = document.getElementById("progressWrap");
+const progressLabel = document.getElementById("progressLabel");
+const progressBar = document.getElementById("progressBar");
+
+let selectedFiles = [];
+
+function refreshFileList() {
+  fileList.innerHTML = selectedFiles.map(f => `<div>📄 ${escapeHtml(f.name)}</div>`).join("");
+  startBtn.disabled = !usernameInput.value.trim() || selectedFiles.length === 0;
+}
+
+usernameInput.addEventListener("input", refreshFileList);
+
+fileDrop.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  selectedFiles = [...selectedFiles, ...fileInput.files];
+  fileInput.value = "";
+  refreshFileList();
+});
+["dragover", "dragenter"].forEach(ev =>
+  fileDrop.addEventListener(ev, e => { e.preventDefault(); fileDrop.classList.add("dragover"); }));
+["dragleave", "drop"].forEach(ev =>
+  fileDrop.addEventListener(ev, e => { e.preventDefault(); fileDrop.classList.remove("dragover"); }));
+fileDrop.addEventListener("drop", e => {
+  selectedFiles = [...selectedFiles, ...e.dataTransfer.files];
+  refreshFileList();
+});
+
+startBtn.addEventListener("click", async () => {
+  const username = usernameInput.value.trim();
+  if (!username || selectedFiles.length === 0) return;
+
+  startBtn.disabled = true;
+  usernameInput.disabled = true;
+  progressWrap.classList.add("active");
+
+  const fd = new FormData();
+  fd.append("username", username);
+  selectedFiles.forEach(f => fd.append("files", f));
+
+  try {
+    const res = await fetch(`${API_HOST}/setup`, { method: "POST", body: fd });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const p = JSON.parse(line);
+        if (p.stage === "index" && p.total > 0) {
+          progressBar.style.width = `${Math.round((p.current / p.total) * 100)}%`;
+        }
+        progressLabel.textContent = p.message || "";
+      }
+    }
+
+    // Done → hide onboarding and enter the chat with the username as session id
+    progressBar.style.width = "100%";
+    setTimeout(() => {
+      setupEl.classList.add("hidden");
+      connect(username);
+      addMsg(`Session started for "${username}" — ask a research question!`, "system");
+    }, 400);
+  } catch (err) {
+    progressLabel.textContent = "Upload failed: " + err.message;
+    startBtn.disabled = false;
+    usernameInput.disabled = false;
+  }
+});
 </script>
 </body>
 </html>

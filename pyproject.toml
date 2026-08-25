@@ -18,6 +18,7 @@ dependencies = [
     "pypdf>=6.16.2",
     "python-docx>=1.2.0",
     "python-dotenv>=1.2.3",
+    "python-multipart>=0.0.32",
     "qdrant-client>=1.19.0",
     "sentence-transformers>=6.0.0",
     "uvicorn>=0.52.4",
