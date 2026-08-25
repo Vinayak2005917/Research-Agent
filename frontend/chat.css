@@ -1,9 +1,9 @@
 :root {
-  --red: #b91c1c;
-  --red-hover: #991b1b;
-  --red-tint: #fef2f2;
-  --red-border: #fecaca;
-  --bg: #fafafa;
+  --red: #374151;
+  --red-hover: #1f2937;
+  --red-tint: #f3f4f6;
+  --red-border: #d1d5db;
+  --bg: #ffffff;
   --surface: #ffffff;
   --border: #e5e7eb;
   --text: #111827;
@@ -118,9 +118,16 @@ body {
   max-width: 920px;
   margin: 0 auto;
   padding: 32px 40px;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* Show the welcome artwork until the first chat message is sent. */
+body:not(.chat-started) #chat {
+  background: linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.25)),
+    #ffffff url("chat_screen_bg.jpg") center / 320px auto no-repeat;
 }
 
 /* Scrollbar */
@@ -349,7 +356,7 @@ input {
 input::placeholder { color: #9ca3af; }
 input:focus {
   border-color: var(--red);
-  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.08);
+  box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.08);
 }
 button {
   padding: 13px 26px;
@@ -367,7 +374,7 @@ button:hover:not(:disabled) { background: var(--red-hover); }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.25);
+  box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.25);
 }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 

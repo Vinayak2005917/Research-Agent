@@ -236,6 +236,7 @@ form.addEventListener("submit", (e) => {
   e.preventDefault();
   const text = input.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  document.body.classList.add("chat-started");
   addMsg(text, "user");
   input.value = "";
   currentToolPanel = null; // new question → fresh collapsible panel
@@ -267,7 +268,7 @@ if (!sessionId) {
   window.location.href = "index.html";
 } else {
   connect(sessionId);
-  addMsg(`Session started for "${sessionId}". We have a few exoplanet related files and preset prompts to test.`, "system");
+  addMsg(`Hello ${sessionId}! We have a few exoplanet related files and preset prompts to test.`, "system");
 }
 
 /* ---------- Files panel & in-chat upload ---------- */
