@@ -42,20 +42,21 @@ def load_json(path):
     return json.dumps(data, indent=4)
 
 def universal_file_loader(path):
-    if path.endswith('.pdf'):
+    path_lower = path.lower()
+    if path_lower.endswith('.pdf'):
         doc = pymupdf.open(path)
         return load_pdf(doc)
-    elif path.endswith('.txt'):
+    elif path_lower.endswith('.txt'):
         return load_txt(path)
-    elif path.endswith('.md'):
+    elif path_lower.endswith('.md'):
         return load_markdown(path)
-    elif path.endswith('.docx'):
+    elif path_lower.endswith('.docx'):
         return load_docx(path)
-    elif path.endswith('.csv'):
+    elif path_lower.endswith('.csv'):
         return load_csv(path)
-    elif path.endswith('.xlsx'):
+    elif path_lower.endswith('.xlsx'):
         return load_excel(path)
-    elif path.endswith('.json'):    
+    elif path_lower.endswith('.json'):
         return load_json(path)
     else:
         raise ValueError(f"Unsupported file format: {path}")

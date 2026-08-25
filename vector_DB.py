@@ -6,63 +6,41 @@ import os
 from utils import debug_print
 from langchain.tools import tool
 from websocket import send_tool_update
-from dotenv import load_dotenv
-load_dotenv()
-MODEL = os.getenv("MODEL")
 
+from openai import OpenAI
+import numpy as np
 
-if MODEL == "local":
-    from sentence_transformers import SentenceTransformer
+_openai_client = OpenAI(
+    base_url="https://api.aicredits.in/v1",
+    api_key=os.getenv("OPENAI_API_KEY"),
+)
+EMBEDDING_MODEL_NAME = os.getenv(
+    "EMBEDDING_MODEL",
+    "text-embedding-3-small"
+)
 
-    MODEL_PATH = "./models/bge-small-en-v1.5"
-    embedding_model = SentenceTransformer(MODEL_PATH)
-
-    def embedd(texts, **kwargs):
-        return embedding_model.encode(texts, **kwargs)
-
-    VECTOR_SIZE = embedding_model.get_sentence_embedding_dimension()
-
-elif MODEL == "remote":
-    from openai import OpenAI
-    import numpy as np
-
-    _openai_client = OpenAI(
-        base_url="https://api.aicredits.in/v1",
-        api_key=os.getenv("OPENAI_API_KEY"),
-    )
-    EMBEDDING_MODEL_NAME = os.getenv(
-        "EMBEDDING_MODEL",
-        "text-embedding-3-small"
+def embedd(texts, **kwargs):
+    response = _openai_client.embeddings.create(
+        model=EMBEDDING_MODEL_NAME,
+        input=texts,
     )
 
-    def embedd(texts, **kwargs):
-        response = _openai_client.embeddings.create(
-            model=EMBEDDING_MODEL_NAME,
-            input=texts,
-        )
-
-        vectors = np.array(
-            [item.embedding for item in response.data],
-            dtype=np.float32
-        )
-
-        if kwargs.get("normalize_embeddings"):
-            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-            norms[norms == 0] = 1.0
-            vectors = vectors / norms
-
-        return vectors
-
-    # Get the dimension from the remote embedding model
-    VECTOR_SIZE = len(
-        embedd("dimension probe", normalize_embeddings=False)[0]
+    vectors = np.array(
+        [item.embedding for item in response.data],
+        dtype=np.float32
     )
 
-else:
-    raise ValueError(
-        f"Unknown MODEL value: '{MODEL}'. "
-        "Set MODEL to 'local' or 'remote' in .env"
-    )
+    if kwargs.get("normalize_embeddings"):
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        vectors = vectors / norms
+
+    return vectors
+
+# Get the dimension from the remote embedding model
+VECTOR_SIZE = len(
+    embedd("dimension probe", normalize_embeddings=False)[0]
+)
 
 QDRANT_PATH = "./data/qdrant"
 COLLECTION_NAME = "research_documents"
@@ -154,7 +132,7 @@ def close_client():
 def retrieve_top_k(query, session_id, k=5):
 
     debug_print(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
-    send_tool_update(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
+    send_tool_update(f"Retrieving Top {k} relevant documents for query: '{query}''")
     query_vector = embedd([query], normalize_embeddings=True)[0].tolist()
 
     results = client.query_points(
@@ -171,6 +149,8 @@ def retrieve_top_k(query, session_id, k=5):
         limit=k,
         with_payload=True,
     )
+    debug_print(f"Retrieved {len(results.points)} points from the vector database for query: '{query}'")
+    send_tool_update(f"Retrieved {len(results.points)} points from the vector database for query: '{query}'")
     return results.points
 
 if __name__ == "__main__":

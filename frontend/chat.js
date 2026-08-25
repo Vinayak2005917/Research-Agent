@@ -40,6 +40,38 @@ function renderMarkdown(md) {
     return `\u0000IC${inlineCodes.length - 1}\u0000`;
   });
 
+  // Plain uploaded-file citations are emitted as:
+  // [filename.docx, chunk 6; filename.pdf, chunk 6].
+  // Link each cited file to the current user's files endpoint.
+  text = text.replace(/\[([^\]]+)\]/g, (full, citationGroup) => {
+    const citations = citationGroup.split(/;\s*/);
+    const links = citations.map(citation => {
+      const match = citation.trim().match(
+        /(?:^|[/\\])([^/\\,;]+\.(?:pdf|txt|md|docx|csv|xlsx|json))(?:,\s*chunk\s+\d+)?$/i
+      );
+      if (!match) return null;
+      const filename = match[1];
+      const user = new URLSearchParams(window.location.search).get("session") || "";
+      const href = `${API_HOST}/files/${encodeURIComponent(user)}/${encodeURIComponent(filename)}`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(citation.trim())}</a>`;
+    });
+    return links.every(Boolean) ? links.join("; ") : full;
+  });
+
+  // Uploaded-file citations use the form [label](filename.ext, chunk N).
+  // Turn them into links to the current user's file endpoint.
+  text = text.replace(/\[([^\]]+)\]\((?!https?:\/\/)([^)\n]+)\)/gi,
+    (_, label, citation) => {
+      const match = citation.trim().match(
+        /(?:^|[/\\])([^/\\]+\.(?:pdf|txt|md|docx|csv|xlsx|json))(?:,\s*chunk\s+\d+)?$/i
+      );
+      if (!match) return _;
+      const filename = match[1];
+      const user = new URLSearchParams(window.location.search).get("session") || "";
+      const href = `${API_HOST}/files/${encodeURIComponent(user)}/${encodeURIComponent(filename)}`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+
   // Links: [text](url)
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
     const isCiteNum = /^\[\d+\]$|^\d+$/.test(label.trim());
@@ -235,5 +267,72 @@ if (!sessionId) {
   window.location.href = "index.html";
 } else {
   connect(sessionId);
-  addMsg(`Session started for "${sessionId}" — ask a research question!`, "system");
+  addMsg(`Session started for "${sessionId}". We have a few exoplanet related files and preset prompts to test.`, "system");
 }
+
+/* ---------- Files panel & in-chat upload ---------- */
+const filesBtn = document.getElementById("filesBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const chatFileInput = document.getElementById("chatFileInput");
+const filesPanel = document.getElementById("filesPanel");
+const closeFilesBtn = document.getElementById("closeFilesBtn");
+const filesList = document.getElementById("filesList");
+
+function getSessionUser() {
+  return new URLSearchParams(window.location.search).get("session") || "";
+}
+
+function formatSize(bytes) {
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return bytes + " B";
+}
+
+async function loadFiles() {
+  const user = getSessionUser();
+  filesList.innerHTML = '<li class="empty">Loading…</li>';
+  try {
+    const res = await fetch(`${API_HOST}/files/${encodeURIComponent(user)}`);
+    if (!res.ok) throw new Error(`server returned ${res.status}`);
+    const data = await res.json();
+    if (!data.files.length) {
+      filesList.innerHTML = '<li class="empty">No files uploaded yet.</li>';
+      return;
+    }
+    filesList.innerHTML = data.files.map(f =>
+      `<li><a href="${API_HOST}/files/${encodeURIComponent(user)}/${encodeURIComponent(f.name)}" target="_blank" rel="noopener noreferrer">📄 ${escapeHtml(f.name)}</a><span class="size">${formatSize(f.size)}</span></li>`
+    ).join("");
+  } catch {
+    filesList.innerHTML = '<li class="empty">Failed to load files.</li>';
+  }
+}
+
+filesBtn.addEventListener("click", () => {
+  filesPanel.classList.remove("hidden");
+  loadFiles();
+});
+closeFilesBtn.addEventListener("click", () => filesPanel.classList.add("hidden"));
+filesPanel.addEventListener("click", e => {
+  if (e.target === filesPanel) filesPanel.classList.add("hidden");
+});
+
+uploadBtn.addEventListener("click", () => chatFileInput.click());
+chatFileInput.addEventListener("change", async () => {
+  const user = getSessionUser();
+  if (!user || !chatFileInput.files.length) return;
+  statusEl.textContent = "Uploading & indexing files...";
+  const fd = new FormData();
+  fd.append("username", user);
+  [...chatFileInput.files].forEach(f => fd.append("files", f));
+  chatFileInput.value = "";
+  try {
+    const res = await fetch(`${API_HOST}/upload`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(`server returned ${res.status}`);
+    const data = await res.json();
+    const ok = data.results.filter(r => r.status === "indexed").length;
+    statusEl.textContent = `${ok}/${data.results.length} file(s) indexed`;
+    setTimeout(() => { if (statusEl.textContent.includes("indexed")) statusEl.textContent = ""; }, 4000);
+  } catch {
+    statusEl.textContent = "Upload failed";
+  }
+});

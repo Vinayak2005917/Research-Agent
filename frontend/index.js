@@ -56,6 +56,9 @@ startBtn.addEventListener("click", async () => {
 
   try {
     const res = await fetch(`${API_HOST}/setup`, { method: "POST", body: fd });
+    if (!res.ok || !res.body) {
+      throw new Error(`server returned ${res.status}`);
+    }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -74,6 +77,13 @@ startBtn.addEventListener("click", async () => {
         }
         progressLabel.textContent = p.message || "";
       }
+    }
+
+    // A final NDJSON record may not be followed by a newline.
+    if (buffer.trim()) {
+      const p = JSON.parse(buffer);
+      progressLabel.textContent = p.message || progressLabel.textContent;
+      if (p.stage === "done") progressBar.style.width = "100%";
     }
 
     // Done → go to the chat page with the username as session id

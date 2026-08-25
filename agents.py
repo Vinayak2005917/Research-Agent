@@ -90,10 +90,35 @@ research_agent = create_agent(
     response_format=ResearchOutput
 )
 
-async def ask_research_agent(question):
+async def ask_research_agent(state: dict):
+    state_context = f"""
+        Full research state:
+
+        Session ID:
+        {state.get("session_id", "")}
+
+        User question:
+        {state.get("user_question", "")}
+
+        Previous interactions with the user:
+        {state.get("interactions", [])}
+
+        Existing research notes (facts and their sources):
+        {state.get("research_notes", [])}
+
+        Current draft final answer, if any:
+        {state.get("final_answer", "")}
+
+        Current evaluation, if any:
+        {state.get("evaluation", None)}
+
+        Continue the research from this state. Preserve useful existing facts,
+        avoid repeating work, and add only newly verified information.
+    """
+
     result = await research_agent.ainvoke({
         "messages": [
-            {"role": "user", "content": question}
+            {"role": "user", "content": state_context}
         ]
     })
 
@@ -115,7 +140,7 @@ Your job is to write a final answer to the user's question based ONLY on the res
 
 ## Important:
 * Use only the facts in the research notes. DO NOT MAKE UP ANY INFORMATION OR SOURCES.
-* Cite the sources for each claim. format : [text](source)
+* Cite the sources for each claim. format : [text](file_name)
 * If the information is insufficient, say so honestly.
 * Your final answer MUST be in Markdown format.
 """
@@ -178,7 +203,7 @@ and if needed, use your tools to gather additional evidence.
 * Mark each claim as verified, corrected, or unsupported.
 * Rewrite the final answer keeping only verified/corrected claims, removing anything unsupported.
 * DO NOT MAKE UP ANY INFORMATION OR SOURCES.
-* Cite sources for each claim. format : [text](source)
+* Cite sources for each claim. format : [text](file_name)
 * Your output MUST be in Markdown format.
 """
 

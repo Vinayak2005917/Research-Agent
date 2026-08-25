@@ -5,6 +5,7 @@ from utils import debug_print
 from langgraph.types import interrupt, Command
 from langgraph.checkpoint.memory import InMemorySaver
 from pprint import pprint
+from websocket import manager, set_active_connection, reset_active_connection, send_tool_update
 
 class Interations(TypedDict):
     question: str
@@ -30,14 +31,14 @@ class State(TypedDict):
 
 async def research_agent_node(state: State):
     debug_print(f"Research agent started with session id {state['session_id']} and question: {state['user_question']}")
+    send_tool_update(f"Research agent started with session id {state['session_id']} and question: {state['user_question']}")
 
-    question = state["user_question"]
-
-    result = await ask_research_agent(question)
+    result = await ask_research_agent(state)
 
     parsed = result["structured_response"]
 
     debug_print(f"Research agent finished with {len(parsed.interactions)} no. of interactions and {len(parsed.research_notes)} no. of research notes")
+    send_tool_update(f"Research agent finished with {len(parsed.interactions)} no. of interactions and {len(parsed.research_notes)} no. of research notes")
     debug_print(f"interactions: {parsed.interactions}")
     debug_print(f"research_notes: {parsed.research_notes}")
 
@@ -49,20 +50,25 @@ async def research_agent_node(state: State):
 
 async def prep_agent_node(state: State):
     debug_print(f"Prep agent started with session id {state['session_id']} and question: {state['user_question']}")
+    send_tool_update(f"Prep agent started with session id {state['session_id']} and question: {state['user_question']}")
 
     final_answer = await run_prep_agent(state)
 
     debug_print(f"Prep agent finished with final answer: {len(final_answer)} characters")
+    send_tool_update(f"Prep agent finished with final answer: {len(final_answer)} characters")
 
     return {"final_answer": final_answer}
 
 
 async def fact_check_node(state: State):
     debug_print(f"Fact-check agent started for session id {state['session_id']}")
+    send_tool_update(f"Fact-check agent started for session id {state['session_id']}")
 
     result = await run_fact_check_agent(state)
 
+
     debug_print(f"Fact-check agent finished with {len(result['evaluation']['corrections'])} corrections")
+    send_tool_update(f"Fact-check agent finished with {len(result['evaluation']['corrections'])} corrections")
 
     return result
 
@@ -109,6 +115,7 @@ async def run_pipeline(query: str, session_id: str, ask_user) -> str:
             user_answer = await ask_user(interrupt_data["question"])
             await app.ainvoke(Command(resume=user_answer), config=config)
             debug_print(f"Resumed graph with user answer: {user_answer}")
+            send_tool_update
 
     final_state = app.get_state(config)
     return final_state.values.get("final_answer", "")

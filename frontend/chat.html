@@ -11,7 +11,23 @@
 <header>
   <h1 style="display:none">Research Agent</h1>
   <span id="status">connecting...</span>
+  <div class="header-actions">
+    <button id="filesBtn" type="button" title="View uploaded files">📁 My Files</button>
+    <button id="uploadBtn" type="button" title="Upload new files">⬆ Upload</button>
+    <input type="file" id="chatFileInput" multiple hidden
+           accept=".pdf,.txt,.md,.docx,.csv,.xlsx,.json">
+  </div>
 </header>
+
+<div id="filesPanel" class="hidden">
+  <div class="files-panel-card">
+    <div class="files-panel-head">
+      <strong>Your uploaded files</strong>
+      <button id="closeFilesBtn" type="button" title="Close">✕</button>
+    </div>
+    <ul id="filesList"><li class="empty">Loading…</li></ul>
+  </div>
+</div>
 
 <div id="chat"></div>
 

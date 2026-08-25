@@ -2,6 +2,7 @@ import os
 import re
 import json
 import uuid
+from pathlib import Path
 
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,34 +67,56 @@ def generate_UUID_thread_id(response: Response):
 
 
 SUPPORTED_EXTS = (".pdf", ".txt", ".md", ".docx", ".csv", ".xlsx", ".json")
-UPLOAD_ROOT = "./uploads"
+# Resolve this from the source file rather than the process working directory.
+# A relative path can otherwise point at a different directory on Render/local runs.
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_ROOT = Path(os.getenv("UPLOAD_ROOT", str(BASE_DIR / "uploads")))
 
 
 def _safe_name(name: str) -> str:
-    """Sanitize a username/filename so it's safe to use as a folder name / session id."""
+    """Sanitize a username so it's safe to use as a folder name/session id."""
     name = os.path.basename(name)
     name = re.sub(r"[^A-Za-z0-9_\-]", "_", name).strip("_")
     return name or "user"
+
+
+def _safe_filename(name: str) -> str:
+    """Sanitize a filename while preserving its extension.
+
+    The extension must remain intact because it is used both for validation
+    and by the document loader to select the correct parser.
+    """
+    original = os.path.basename(name)
+    suffix = Path(original).suffix.lower()
+    stem = Path(original).stem
+    safe_stem = re.sub(r"[^A-Za-z0-9_\-]", "_", stem).strip("_") or "file"
+    return f"{safe_stem}{suffix}"
+
+
+def _upload_path(username: str, filename: str) -> Path:
+    """Return the contained, sanitized path used for a user's uploaded file."""
+    user_dir = UPLOAD_ROOT / _safe_name(username)
+    user_dir.mkdir(parents=True, exist_ok=True)
+    return user_dir / _safe_filename(filename)
 
 
 @app.post("/setup")
 async def setup(username: str = Form(...), files: list[UploadFile] = File(default=[])):
     async def stream():
         user = _safe_name(username)
-        user_dir = os.path.join(UPLOAD_ROOT, user)
-        os.makedirs(user_dir, exist_ok=True)
+        UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
         saved_paths = []
         for f in files:
-            fname = _safe_name(f.filename or "")
+            fname = _safe_filename(f.filename or "")
             if not fname.lower().endswith(SUPPORTED_EXTS):
                 yield json.dumps({"stage": "save", "file": f.filename,
                                   "message": f"skipped unsupported file type"}) + "\n"
                 continue
-            path = os.path.join(user_dir, fname)
-            with open(path, "wb") as out:
+            path = _upload_path(user, fname)
+            with path.open("wb") as out:
                 out.write(await f.read())
-            saved_paths.append((f.filename, path))
+            saved_paths.append((f.filename, str(path)))
 
         total = len(saved_paths)
         yield json.dumps({"stage": "index", "current": 0, "total": total,
@@ -110,7 +133,63 @@ async def setup(username: str = Form(...), files: list[UploadFile] = File(defaul
 
         yield json.dumps({"stage": "done", "session_id": user}) + "\n"
 
-    return StreamingResponse(stream(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/files/{username}")
+def list_files(username: str):
+    """List all files the user has uploaded so far."""
+    user = _safe_name(username)
+    user_dir = UPLOAD_ROOT / user
+    if not user_dir.is_dir():
+        return {"files": []}
+    files = []
+    for path in sorted(user_dir.iterdir()):
+        if path.is_file():
+            files.append({
+                "name": path.name,
+                "size": path.stat().st_size,
+            })
+    return {"files": files}
+
+
+@app.get("/files/{username}/{filename}")
+def download_file(username: str, filename: str):
+    """Serve one uploaded file so document citations can open in a browser tab."""
+    user_dir = (UPLOAD_ROOT / _safe_name(username)).resolve()
+    path = (user_dir / _safe_filename(filename)).resolve()
+    if path.parent != user_dir or not path.is_file():
+        return Response(status_code=404)
+    return FileResponse(path, filename=path.name, content_disposition_type="inline")
+
+
+@app.post("/upload")
+async def upload_files(username: str = Form(...), files: list[UploadFile] = File(...)):
+    """Upload + index new files while already in a chat session."""
+    user = _safe_name(username)
+    UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+
+    results = []
+    for f in files:
+        fname = _safe_filename(f.filename or "")
+        if not fname.lower().endswith(SUPPORTED_EXTS):
+            results.append({"file": f.filename, "status": "skipped",
+                            "message": "unsupported file type"})
+            continue
+        path = _upload_path(user, fname)
+        with path.open("wb") as out:
+            out.write(await f.read())
+        try:
+            count = upsert_file_func(str(path), user)
+            results.append({"file": f.filename, "status": "indexed",
+                            "message": f"Indexed ({count} chunks)"})
+        except Exception as e:
+            results.append({"file": f.filename, "status": "error", "message": str(e)})
+    return {"results": results}
 
 
 @app.get("/health")
