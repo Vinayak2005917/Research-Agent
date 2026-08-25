@@ -30,15 +30,20 @@ async def read_webpage(url: str, query: str):
 
 @tool("Get_relevant_webpages", description="Search the web for relevant webpages.")
 def Get_relevant_webpages(query: str):
-    debug_print(f"Searching the web for: {query}")
-    send_tool_update(f"Searching the web for: {query}")
-    results = DDGS().text(query, max_results=5)
-    debug_print(f"Found & Sent {len(results)} results for query: {query}")
-    send_tool_update(f"Found & Sent {len(results)} results for query: {query}")
-    return "\n\n".join(
-        f"Title: {item['title']}\nLink: {item['href']}\nDescription: {item['body']}"
-        for item in results
-    )
+    try:
+        debug_print(f"Searching the web for: {query}")
+        send_tool_update(f"Searching the web for: {query}")
+        results = DDGS().text(query, max_results=5)
+        debug_print(f"Found & Sent {len(results)} results for query: {query}")
+        send_tool_update(f"Found & Sent {len(results)} results for query: {query}")
+        return "\n\n".join(
+            f"Title: {item['title']}\nLink: {item['href']}\nDescription: {item['body']}"
+            for item in results
+        )
+    except Exception as e:
+        debug_print(f"Error searching the web for: {query}. Error: {e}")
+        send_tool_update(f"Error searching the web for: {query}. Error: {e}")
+        return f"Error searching the web for: {query}. Error: {e}"
 
 @tool("batch_read_pages", description="Read a batch webpages of {'url':'query', 'url':'query'}, never more than 5")
 async def batch_read_pages(pages: dict[str, str]):
