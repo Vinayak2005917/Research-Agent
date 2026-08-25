@@ -1,4 +1,3 @@
-from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from chuncking import split_text_into_chunks
@@ -7,15 +6,56 @@ import os
 from utils import debug_print
 from langchain.tools import tool
 from websocket import send_tool_update
+from dotenv import load_dotenv
+load_dotenv()
+MODEL = os.getenv("MODEL")
 
 
-# Define constants
-MODEL_PATH = "./models/bge-small-en-v1.5"
-embedding_model = SentenceTransformer(MODEL_PATH)
+
+if MODEL == "local":
+    from sentence_transformers import SentenceTransformer
+    # Define constants
+    MODEL_PATH = "./models/bge-small-en-v1.5"
+    embedding_model = SentenceTransformer(MODEL_PATH)
+
+    def embedd(texts, **kwargs):
+        """Embed texts using the local sentence-transformers model."""
+        return embedding_model.encode(texts, **kwargs)
+
+elif MODEL == "remote":
+    # open ai api call to get embedding model
+    from openai import OpenAI
+    _openai_client = OpenAI()
+    EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
+    def embedd(texts, **kwargs):
+        """Embed texts using the OpenAI embeddings API."""
+        response = _openai_client.embeddings.create(
+            model=EMBEDDING_MODEL_NAME,
+            input=texts,
+        )
+        import numpy as np
+        vectors = np.array([item.embedding for item in response.data], dtype=np.float32)
+        if kwargs.get("normalize_embeddings"):
+            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            vectors = vectors / norms
+        return vectors
+
+else:
+    raise ValueError(f"Unknown MODEL value: '{MODEL}'. Set MODEL to 'local' or 'remote' in .env")
+
 QDRANT_PATH = "./data/qdrant"
 COLLECTION_NAME = "research_documents"
 client = QdrantClient(path=QDRANT_PATH)
-VECTOR_SIZE = embedding_model.get_embedding_dimension()
+VECTOR_SIZE = (
+    embedding_model.get_sentence_embedding_dimension()
+    if hasattr(embedding_model, "get_sentence_embedding_dimension")
+    else len(embedd("dimension probe", normalize_embeddings=False)[0])
+)
+
+
+
 
 
 # Create collection if it doesn't exist
@@ -36,7 +76,7 @@ def upsert_file(file_path, session_id):
     texts = [chunk["text"] for chunk in chunks]
 
     # Generate embeddings
-    vectors = embedding_model.encode(texts, normalize_embeddings=True)
+    vectors = embedd(texts, normalize_embeddings=True)
 
     points = []
 
@@ -63,7 +103,7 @@ def upsert_file_func(file_path, session_id):
     texts = [chunk["text"] for chunk in chunks]
 
     # Generate embeddings
-    vectors = embedding_model.encode(texts, normalize_embeddings=True)
+    vectors = embedd(texts, normalize_embeddings=True)
 
     points = []
 
@@ -100,7 +140,7 @@ def retrieve_top_k(query, session_id, k=5):
 
     debug_print(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
     send_tool_update(f"Retrieving top {k} relevant documents for query: '{query}' and session_id: '{session_id}'")
-    query_vector = embedding_model.encode(query,normalize_embeddings=True).tolist()
+    query_vector = embedd([query], normalize_embeddings=True)[0].tolist()
 
     results = client.query_points(
         collection_name=COLLECTION_NAME,
