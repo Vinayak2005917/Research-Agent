@@ -93,6 +93,17 @@
   .agent.question {
     border-left: 3px solid var(--red);
     background: var(--red-tint);
+    font-family: inherit;
+  }
+  .agent.question .question-header {
+    display: block;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--red);
+    margin-bottom: 6px;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   .system {
     align-self: center;
@@ -293,6 +304,31 @@
   }
   button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+  /* ---------- Example prompts ---------- */
+  #examples {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 40px 10px;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .example {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--red-border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .example:hover:not(:disabled) {
+    background: var(--red-tint);
+    color: var(--red);
+    border-color: var(--red);
+  }
+
   /* ---------- Responsive ---------- */
   @media (max-width: 640px) {
     #chat { padding: 20px; gap: 14px; }
@@ -308,6 +344,11 @@
   <span id="status">connecting...</span>
 </header>
 <div id="chat"></div>
+<div id="examples">
+  <button class="example" type="button">what is most recent exoplanet found</button>
+  <button class="example" type="button">what is the nancy grace rooman telescope</button>
+  <button class="example" type="button">what is an exoplanet</button>
+</div>
 <form id="form">
   <input id="input" autocomplete="off" placeholder="Ask a research question...">
   <button id="send">Send</button>
@@ -493,7 +534,12 @@ async function connect() {
       renderAgentMessage(msg.content);
       setBusy(false);
     } else if (msg.type === "agent_question") {
-      renderAgentMessage(msg.content);
+      const div = addMsg("", "agent question");
+      const header = document.createElement("span");
+      header.className = "question-header";
+      header.textContent = "Question";
+      div.appendChild(header);
+      div.appendChild(document.createTextNode(msg.content));
       setBusy(false); // let the user answer
       pendingAnswer = true;
     } else if (msg.type === "tool_update") {
@@ -522,6 +568,14 @@ form.addEventListener("submit", (e) => {
   }
   setBusy(true);
   statusEl.textContent = "thinking...";
+});
+
+// Example prompt chips — fill and submit
+document.querySelectorAll(".example").forEach(btn => {
+  btn.addEventListener("click", () => {
+    input.value = btn.textContent;
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+  });
 });
 
 connect();

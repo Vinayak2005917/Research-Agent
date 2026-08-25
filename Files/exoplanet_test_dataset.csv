@@ -1,0 +1,21 @@
+planet_name,host_star,discovery_method,radius_earth,mass_earth,orbital_period_days,discovery_year
+51 Pegasi b,51 Pegasi,Radial Velocity,4.9,4.2,4.230785,1995
+HD 209458 b,HD 209458,Transit,1.38,0.69,3.52474859,1999
+Kepler-22 b,Kepler-22,Transit,2.38,36.0,289.8623,2011
+Kepler-10 b,Kepler-10,Transit,1.47,3.33,0.837495,2011
+TRAPPIST-1 b,TRAPPIST-1,Transit,1.116,1.374,1.510826,2016
+TRAPPIST-1 e,TRAPPIST-1,Transit,0.92,0.692,6.099615,2017
+TRAPPIST-1 f,TRAPPIST-1,Transit,1.045,1.039,9.20669,2017
+Proxima Centauri b,Proxima Centauri,Radial Velocity,1.03,1.07,11.1868,2016
+WASP-12 b,WASP-12,Transit,1.9,1.47,1.09142,2008
+WASP-39 b,WASP-39,Transit,1.27,0.28,4.055259,2011
+GJ 1214 b,GJ 1214,Transit,2.74,6.55,1.58040433,2009
+55 Cancri e,55 Cancri,Transit,1.875,8.08,0.73654737,2004
+HD 189733 b,HD 189733,Transit,1.138,1.13,2.21857567,2005
+K2-18 b,K2-18,Transit,2.61,8.63,32.9396,2015
+TOI-700 d,TOI-700,Transit,1.144,1.72,37.426,2020
+LHS 1140 b,LHS 1140,Transit,1.73,6.98,24.73712,2017
+GJ 436 b,GJ 436,Transit,4.22,22.1,2.6439,2004
+HAT-P-11 b,HAT-P-11,Transit,4.31,26.0,4.887802,2009
+Kepler-452 b,Kepler-452,Transit,1.63,5.0,384.843,2015
+Kepler-16 b,Kepler-16,Transit,0.7538,0.333,228.776,2011

@@ -1,0 +1,104 @@
+{
+  "dataset": {
+    "title": "Exoplanet Detection Reference Dataset",
+    "description": "Structured reference records for testing JSON ingestion and semantic retrieval.",
+    "topic": "Exoplanet detection and characterization",
+    "records": [
+      {
+        "id": "exo-001",
+        "planet": "TRAPPIST-1e",
+        "host_star": "TRAPPIST-1",
+        "detection_method": "Transit",
+        "orbital_period_days": 6.0996,
+        "measurement_focus": [
+          "planetary radius",
+          "orbital period"
+        ],
+        "research_notes": "Transit observations measure the decrease in stellar brightness when the planet crosses the star."
+      },
+      {
+        "id": "exo-002",
+        "planet": "51 Pegasi b",
+        "host_star": "51 Pegasi",
+        "detection_method": "Radial Velocity",
+        "orbital_period_days": 4.2308,
+        "measurement_focus": [
+          "stellar radial motion",
+          "planetary mass"
+        ],
+        "research_notes": "Radial velocity detects periodic motion of the host star caused by the planet's gravitational influence."
+      },
+      {
+        "id": "exo-003",
+        "planet": "HD 209458 b",
+        "host_star": "HD 209458",
+        "detection_method": "Transit",
+        "orbital_period_days": 3.5247,
+        "measurement_focus": [
+          "planetary radius",
+          "atmospheric characterization"
+        ],
+        "research_notes": "Transit observations can be combined with spectroscopy to investigate an exoplanet atmosphere."
+      },
+      {
+        "id": "exo-004",
+        "planet": "Proxima Centauri b",
+        "host_star": "Proxima Centauri",
+        "detection_method": "Radial Velocity",
+        "orbital_period_days": 11.1868,
+        "measurement_focus": [
+          "stellar radial motion",
+          "planetary mass"
+        ],
+        "research_notes": "The radial velocity technique measures periodic changes in the host star's line-of-sight velocity."
+      },
+      {
+        "id": "exo-005",
+        "planet": "Kepler-16 b",
+        "host_star": "Kepler-16",
+        "detection_method": "Transit",
+        "orbital_period_days": 228.776,
+        "measurement_focus": [
+          "transit timing",
+          "orbital period"
+        ],
+        "research_notes": "Repeated transit signatures can reveal the orbital period of a planet."
+      },
+      {
+        "id": "exo-006",
+        "planet": "OGLE-2005-BLG-390Lb",
+        "host_star": "OGLE-2005-BLG-390L",
+        "detection_method": "Gravitational Microlensing",
+        "orbital_period_days": null,
+        "measurement_focus": [
+          "gravitational lensing signal"
+        ],
+        "research_notes": "Microlensing can reveal planets through short deviations in a lensing event."
+      },
+      {
+        "id": "exo-007",
+        "planet": "HR 8799 b",
+        "host_star": "HR 8799",
+        "detection_method": "Direct Imaging",
+        "orbital_period_days": null,
+        "measurement_focus": [
+          "planetary light",
+          "atmospheric characterization"
+        ],
+        "research_notes": "Direct imaging attempts to isolate light from a planet from the much brighter light of its host star."
+      },
+      {
+        "id": "exo-008",
+        "planet": "Kepler-22 b",
+        "host_star": "Kepler-22",
+        "detection_method": "Transit",
+        "orbital_period_days": 289.8623,
+        "measurement_focus": [
+          "planetary radius",
+          "orbital period"
+        ],
+        "research_notes": "Transit depth provides information related to the relative sizes of the planet and star."
+      }
+    ]
+  }
+}
