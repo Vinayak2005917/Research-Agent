@@ -26,7 +26,10 @@ elif MODEL == "remote":
     from openai import OpenAI
     import numpy as np
 
-    _openai_client = OpenAI()
+    _openai_client = OpenAI(
+        base_url="https://api.aicredits.in/v1",
+        api_key=os.getenv("OPENAI_API_KEY"),
+    )
     EMBEDDING_MODEL_NAME = os.getenv(
         "EMBEDDING_MODEL",
         "text-embedding-3-small"
