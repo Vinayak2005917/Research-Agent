@@ -110,6 +110,7 @@ The final workflow node reviews the draft claim by claim. It can retrieve additi
 ├── file_loaders.py     # PDF, text, DOCX, tabular, and JSON loaders
 ├── chuncking.py        # Recursive text chunking
 ├── frontend/           # Static setup and chat pages
+├── tests/              # Automated unit tests
 ├── Arch diagram.png    # Visual system architecture diagram
 ├── Files/              # Example/reference documents
 ├── uploads/            # Per-session uploaded files
@@ -187,6 +188,16 @@ python vector_DB.py
 ```
 
 The setup page can also upload and index files for a new session. On first startup, `vector_DB.py` probes the configured embedding model to determine the vector size and creates the local Qdrant collection if it does not already exist.
+
+## Testing
+
+The project includes unit tests for document loading and text chunking. Run them from the repository root with the project's virtual environment:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The current test suite verifies JSON and plain-text loading, unsupported file rejection, chunk metadata, and sequential chunk indexes. The tests avoid initializing the API and vector database so they can run without making external model requests.
 
 ## API and WebSocket endpoints
 
